@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "SKU catalog entry for an electronics product. Stock count is derived from in_stock units.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "brand": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "model": { "type": "string", "maxLength": 60 },
+        "sku": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "barcode": { "type": "string", "maxLength": 60 },
+        "category": {
+          "type": "string",
+          "enum": ["Smartphones", "Laptops", "Audio", "Displays", "Components", "Accessories", "Gaming", "Other"]
+        },
+        "costPrice": { "type": "number" },
+        "sellPrice": { "type": "number" },
+        "reorderThreshold": { "type": "number" },
+        "supplierId": { "type": "string", "maxLength": 128 },
+        "supplierName": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "notes": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId", "name", "brand", "sku", "category",
+        "costPrice", "sellPrice", "reorderThreshold", "status", "createdAt", "updatedAt"
+      ]
+    },
+    "Unit": {
+      "title": "Unit",
+      "description": "Individual physical serialized item (IMEI/Serial) tracked through its lifecycle.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "productId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "serialNumber": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "status": { "type": "string", "enum": ["in_stock", "sold", "returned", "damaged"] },
+        "costSnapshot": { "type": "number" },
+        "receivedAt": { "type": "string", "format": "date-time" },
+        "soldAt": { "type": "string", "format": "date-time" },
+        "saleId": { "type": "string", "maxLength": 128 },
+        "warrantyExpiry": { "type": "string", "maxLength": 40 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId", "productId", "serialNumber", "status", "costSnapshot", "receivedAt", "updatedAt"
+      ]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Transaction header for an online or in-store sale.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "soldBy": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "channel": { "type": "string", "enum": ["in_store", "whatsapp", "online", "marketplace"] },
+        "paymentMethod": { "type": "string", "enum": ["mpesa", "cash", "card", "bank_transfer"] },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerPhone": { "type": "string", "maxLength": 40 },
+        "totalAmount": { "type": "number" },
+        "totalProfit": { "type": "number" },
+        "itemCount": { "type": "number" },
+        "status": { "type": "string", "enum": ["completed", "returned"] },
+        "soldAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId", "soldBy", "channel", "paymentMethod",
+        "totalAmount", "totalProfit", "itemCount", "status", "soldAt"
+      ]
+    },
+    "SaleItem": {
+      "title": "SaleItem",
+      "description": "Line item linking a sale to a specific physical unit with price snapshot.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "saleId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "unitId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "productId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "productName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "sku": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "serialNumber": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "priceAtSale": { "type": "number" },
+        "costAtSale": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId", "saleId", "unitId", "productId", "productName",
+        "sku", "serialNumber", "priceAtSale", "costAtSale", "createdAt"
+      ]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Electronics distributor or supplier with contact details and lead time.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "contactName": { "type": "string", "maxLength": 80 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "email": { "type": "string", "maxLength": 100 },
+        "leadTimeDays": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name", "leadTimeDays", "status", "createdAt", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Role-based store user profile (admin or staff).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["admin", "staff"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "SKU catalog owned by the store."
+    },
+    "/units/{unitId}": {
+      "schema": { "$ref": "#/entities/Unit" },
+      "description": "Serialized physical units (one document per physical item)."
+    },
+    "/sales/{saleId}": {
+      "schema": { "$ref": "#/entities/Sale" },
+      "description": "Sales transaction headers."
+    },
+    "/sale_items/{saleItemId}": {
+      "schema": { "$ref": "#/entities/SaleItem" },
+      "description": "Line items linking sales to specific physical units."
+    },
+    "/suppliers/{supplierId}": {
+      "schema": { "$ref": "#/entities/Supplier" },
+      "description": "Supplier directory with lead times."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Store user profiles with role (admin/staff)."
+    }
+  }
+}
