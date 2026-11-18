@@ -3,10 +3,12 @@ services:
     name: rebootly-inventory
     runtime: node
     plan: free
-    buildCommand: npm install --include=dev && npm run build
+    buildCommand: npm install --include=dev --legacy-peer-deps && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22"
       - key: GEMINI_API_KEY
         sync: false
