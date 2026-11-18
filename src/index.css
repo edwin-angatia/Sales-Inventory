@@ -1,19 +1,33 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
   body {
     font-family: var(--font-sans);
+    color: #0a2540;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
   }
 }
 
-/* Subtle Islamic 8-point geometric star tessellation background */
+/* Vibrant light orange, blue & navy-blue background with subtle Islamic 8-point geometric star tessellation */
 .islamic-pattern-bg {
-  background-color: #f6faf8;
-  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%230f766e' stroke-opacity='0.07' stroke-width='1'%3E%3Cpath d='M40 0L50 30L80 40L50 50L40 80L30 50L0 40L30 30Z'/%3E%3Cpath d='M0 0L18 18M80 0L62 18M0 80L18 62M80 80L62 62'/%3E%3Ccircle cx='40' cy='40' r='12' stroke='%23d97706' stroke-opacity='0.08'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 80px 80px;
+  background-color: #eef5ff;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%230a2540' stroke-opacity='0.065' stroke-width='1'%3E%3Cpath d='M40 0L50 30L80 40L50 50L40 80L30 50L0 40L30 30Z'/%3E%3Cpath d='M0 0L18 18M80 0L62 18M0 80L18 62M80 80L62 62'/%3E%3Ccircle cx='40' cy='40' r='12' stroke='%23ea580c' stroke-opacity='0.11'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(circle at 8% 12%, rgba(251, 146, 60, 0.22) 0%, transparent 42%),
+    radial-gradient(circle at 92% 14%, rgba(37, 99, 235, 0.2) 0%, transparent 45%),
+    radial-gradient(circle at 52% 88%, rgba(10, 37, 64, 0.12) 0%, transparent 50%),
+    linear-gradient(135deg, #f0f6ff 0%, #fff7ed 52%, #e6f0ff 100%);
+  background-size: 80px 80px, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed;
 }

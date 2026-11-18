@@ -28,6 +28,7 @@ import {
   Plus,
   Receipt,
   RotateCcw,
+  ScanBarcode,
   Search,
   Target,
   TrendingDown,
@@ -58,6 +59,7 @@ import {
   UnitStatus,
 } from './types';
 import { AuthGate } from './components/AuthGate';
+import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { GoalAttainmentModal } from './components/GoalAttainmentModal';
 import { ItemModal } from './components/ItemModal';
 import { MonthlyRevenueChart } from './components/MonthlyRevenueChart';
@@ -113,6 +115,7 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [sellProduct, setSellProduct] = useState<Product | null>(null);
+  const [unitScannerOpen, setUnitScannerOpen] = useState(false);
 
   // Supplier quick-add form
   const [newSupplierName, setNewSupplierName] = useState('');
@@ -393,7 +396,8 @@ export default function App() {
       return (
         u.serialNumber.toLowerCase().includes(q) ||
         (prod?.name.toLowerCase().includes(q) ?? false) ||
-        (prod?.sku.toLowerCase().includes(q) ?? false)
+        (prod?.sku.toLowerCase().includes(q) ?? false) ||
+        (prod?.barcode?.toLowerCase().includes(q) ?? false)
       );
     });
   }, [units, unitSearch, unitStatusFilter, productById]);
@@ -913,11 +917,11 @@ export default function App() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-200 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white/85 backdrop-blur-xl border-r border-blue-200/75 shadow-sm shadow-blue-950/5 flex flex-col transition-transform duration-200 lg:static lg:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="h-16 px-5 flex items-center justify-between border-b border-slate-200">
+        <div className="h-16 px-5 flex items-center justify-between border-b border-blue-100/90">
           <img
             src={REBOOTLY_LOGO_URL}
             alt="Rebootly"
@@ -927,14 +931,14 @@ export default function App() {
           <button
             type="button"
             onClick={() => setMobileNavOpen(false)}
-            className="p-1 text-slate-400 hover:text-slate-700 lg:hidden"
+            className="p-1 text-slate-400 hover:text-[#0a2540] lg:hidden"
             aria-label="Close navigation"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1.5">
           {navItems.map((nav) => {
             const active = activeView === nav.id;
             return (
@@ -945,10 +949,10 @@ export default function App() {
                   setActiveView(nav.id);
                   setMobileNavOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all whitespace-nowrap ${
                   active
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-gradient-to-r from-[#0a2540] via-[#0e3a6e] to-[#1d4ed8] text-white shadow-sm shadow-blue-900/20'
+                    : 'text-[#0a2540]/75 hover:bg-blue-50/90 hover:text-[#0a2540]'
                 }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -959,10 +963,10 @@ export default function App() {
                   <span
                     className={`text-xs font-mono tabular-nums ${
                       active
-                        ? 'text-slate-300'
+                        ? 'text-orange-300 font-semibold'
                         : nav.id === 'restock' && nav.count > 0
                         ? 'text-orange-600 font-semibold'
-                        : 'text-slate-400'
+                        : 'text-blue-900/45'
                     }`}
                   >
                     {nav.count}
@@ -973,10 +977,10 @@ export default function App() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-200 space-y-3">
+        <div className="p-4 border-t border-blue-100/90 space-y-3 bg-gradient-to-b from-transparent to-blue-50/40">
           <PWAInstallButton />
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-900 truncate">
+            <p className="text-xs font-semibold text-[#0a2540] truncate">
               {user.displayName || 'Store Manager'} · {userRole}
             </p>
             <p className="text-xs text-slate-500 truncate">{user.email}</p>
@@ -984,7 +988,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => signOut(auth)}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#0a2540]/75 hover:text-[#0a2540] hover:bg-blue-100/60 rounded-lg transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
             Sign out
@@ -994,20 +998,22 @@ export default function App() {
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-20">
+        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-blue-200/75 px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-20">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 lg:hidden"
+              className="p-1.5 text-[#0a2540] hover:bg-blue-50 rounded-lg lg:hidden"
               aria-label="Open navigation"
             >
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2 text-sm min-w-0">
-              <span className="hidden sm:inline font-[Georgia] font-bold text-[#04295f]">Rebootly</span>
-              <span className="text-slate-300 hidden sm:inline">/</span>
-              <h1 className="font-semibold text-slate-900 truncate">{viewTitle}</h1>
+              <span className="hidden sm:inline font-[Georgia] font-bold text-[#04295f] tracking-wide">
+                Rebootly
+              </span>
+              <span className="text-orange-400 hidden sm:inline">/</span>
+              <h1 className="font-serif font-bold text-[#0a2540] truncate">{viewTitle}</h1>
             </div>
           </div>
 
@@ -1017,7 +1023,7 @@ export default function App() {
               setEditingProduct(null);
               setItemModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 shadow-sm shadow-orange-500/25 transition-all whitespace-nowrap shrink-0"
           >
             <Plus className="w-4 h-4" />
             Add Product SKU
@@ -1025,57 +1031,57 @@ export default function App() {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto space-y-6">
-          {/* 5-Column Colourful Compact Frosted Glasscard Grid */}
+          {/* 5-Column Vibrant Orange, Blue & Navy Frosted Glasscard Grid */}
           <section
             aria-label="Store summary"
-            className="grid grid-cols-2 lg:grid-cols-5 gap-3"
+            className="grid grid-cols-2 lg:grid-cols-5 gap-3.5"
           >
-            {/* 1. In-Stock Units — Teal/Cyan Glass */}
-            <div className="bg-gradient-to-br from-teal-50/90 via-cyan-50/75 to-white/70 backdrop-blur-md border border-teal-200/80 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+            {/* 1. In-Stock Units — Light Vibrant Blue Glass */}
+            <div className="bg-gradient-to-br from-blue-100/85 via-sky-50/80 to-white/75 backdrop-blur-xl border border-blue-200/90 rounded-2xl p-3.5 sm:p-4 shadow-sm shadow-blue-900/5 hover:shadow-md hover:shadow-blue-900/10 hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold tracking-wide text-teal-800 truncate">
+                <p className="text-[11px] font-semibold tracking-wide text-[#0e3a6e] truncate">
                   In-Stock Units (Derived)
                 </p>
-                <span className="w-6 h-6 rounded-lg bg-teal-600/15 text-teal-700 flex items-center justify-center shrink-0">
+                <span className="w-6 h-6 rounded-lg bg-blue-600/15 text-blue-700 flex items-center justify-center shrink-0">
                   <Boxes className="w-3.5 h-3.5" />
                 </span>
               </div>
-              <p className="mt-2 text-xl sm:text-2xl font-semibold font-mono tabular-nums tracking-tight text-slate-900">
+              <p className="mt-2 text-xl sm:text-2xl font-semibold font-mono tabular-nums tracking-tight text-[#0a2540]">
                 {metrics.totalInStockUnits}
               </p>
-              <p className="mt-0.5 text-[11px] text-teal-800/75 truncate">
+              <p className="mt-0.5 text-[11px] text-blue-900/70 truncate">
                 Across {activeProducts.length} active SKU{activeProducts.length === 1 ? '' : 's'}
               </p>
             </div>
 
-            {/* 2. Inventory Retail Value — Amber/Gold Glass */}
-            <div className="bg-gradient-to-br from-amber-50/90 via-orange-50/75 to-white/70 backdrop-blur-md border border-amber-200/80 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+            {/* 2. Inventory Retail Value — Light Vibrant Orange Glass */}
+            <div className="bg-gradient-to-br from-orange-100/85 via-amber-50/80 to-white/75 backdrop-blur-xl border border-orange-200/90 rounded-2xl p-3.5 sm:p-4 shadow-sm shadow-orange-900/5 hover:shadow-md hover:shadow-orange-900/10 hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold tracking-wide text-amber-900 truncate">
+                <p className="text-[11px] font-semibold tracking-wide text-orange-900 truncate">
                   Inventory Retail Value
                 </p>
-                <span className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
+                <span className="w-6 h-6 rounded-lg bg-orange-500/20 text-orange-700 flex items-center justify-center shrink-0">
                   <Receipt className="w-3.5 h-3.5" />
                 </span>
               </div>
-              <p className="mt-2 text-lg sm:text-2xl font-semibold font-mono tabular-nums tracking-tight text-slate-900 truncate">
+              <p className="mt-2 text-lg sm:text-2xl font-semibold font-mono tabular-nums tracking-tight text-[#0a2540] truncate">
                 {formatKES(metrics.inventoryValue)}
               </p>
-              <p className="mt-0.5 text-[11px] text-amber-900/75 truncate">Active in-stock units</p>
+              <p className="mt-0.5 text-[11px] text-orange-900/75 truncate">Active in-stock units</p>
             </div>
 
-            {/* 3. Needs Restock — Rose/Coral or Mint Glass */}
+            {/* 3. Needs Restock — Vibrant Orange-Coral or Light Navy-Blue Glass */}
             <div
-              className={`backdrop-blur-md rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all border ${
+              className={`backdrop-blur-xl rounded-2xl p-3.5 sm:p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all border ${
                 metrics.restockCount > 0
-                  ? 'bg-gradient-to-br from-rose-50/90 via-orange-50/75 to-white/70 border-rose-200/80'
-                  : 'bg-gradient-to-br from-emerald-50/90 via-teal-50/75 to-white/70 border-emerald-200/80'
+                  ? 'bg-gradient-to-br from-orange-100/90 via-rose-50/75 to-white/75 border-orange-300/85 shadow-orange-900/5'
+                  : 'bg-gradient-to-br from-sky-100/80 via-blue-50/75 to-white/75 border-sky-200/90 shadow-blue-900/5'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
                 <p
                   className={`text-[11px] font-semibold tracking-wide truncate ${
-                    metrics.restockCount > 0 ? 'text-rose-900' : 'text-emerald-900'
+                    metrics.restockCount > 0 ? 'text-orange-950' : 'text-[#0e3a6e]'
                   }`}
                 >
                   Needs Restock
@@ -1083,8 +1089,8 @@ export default function App() {
                 <span
                   className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
                     metrics.restockCount > 0
-                      ? 'bg-rose-500/15 text-rose-700'
-                      : 'bg-emerald-500/15 text-emerald-700'
+                      ? 'bg-orange-500/20 text-orange-700'
+                      : 'bg-blue-600/15 text-blue-700'
                   }`}
                 >
                   <AlertCircle className="w-3.5 h-3.5" />
@@ -1092,14 +1098,14 @@ export default function App() {
               </div>
               <p
                 className={`mt-2 text-xl sm:text-2xl font-semibold font-mono tabular-nums tracking-tight ${
-                  metrics.restockCount > 0 ? 'text-rose-700' : 'text-slate-900'
+                  metrics.restockCount > 0 ? 'text-orange-700' : 'text-[#0a2540]'
                 }`}
               >
                 {metrics.restockCount}
               </p>
               <p
                 className={`mt-0.5 text-[11px] truncate ${
-                  metrics.restockCount > 0 ? 'text-rose-900/75' : 'text-emerald-900/75'
+                  metrics.restockCount > 0 ? 'text-orange-900/75' : 'text-blue-900/70'
                 }`}
               >
                 {metrics.outOfStockCount > 0
@@ -1108,17 +1114,17 @@ export default function App() {
               </p>
             </div>
 
-            {/* 4. Sales Revenue — Emerald/Green Glass */}
-            <div className="bg-gradient-to-br from-emerald-50/90 via-green-50/75 to-white/70 backdrop-blur-md border border-emerald-200/80 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+            {/* 4. Sales Revenue — Light Navy Blue Glass */}
+            <div className="bg-gradient-to-br from-[#dbeafe]/85 via-[#e0e7ff]/75 to-white/80 backdrop-blur-xl border border-blue-300/80 rounded-2xl p-3.5 sm:p-4 shadow-sm shadow-blue-950/10 hover:shadow-md hover:shadow-blue-950/15 hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold tracking-wide text-emerald-900 truncate">
+                <p className="text-[11px] font-semibold tracking-wide text-[#0a2540] truncate">
                   Sales Revenue
                 </p>
                 <span
                   className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
                     metrics.totalProfit < 0
                       ? 'bg-red-500/15 text-red-700'
-                      : 'bg-emerald-600/15 text-emerald-700'
+                      : 'bg-[#0a2540]/12 text-[#0a2540]'
                   }`}
                 >
                   {metrics.totalProfit < 0 ? (
@@ -1128,7 +1134,7 @@ export default function App() {
                   )}
                 </span>
               </div>
-              <p className="mt-2 text-lg sm:text-2xl font-semibold font-mono tabular-nums tracking-tight text-slate-900 truncate">
+              <p className="mt-2 text-lg sm:text-2xl font-semibold font-mono tabular-nums tracking-tight text-[#0a2540] truncate">
                 {formatKES(metrics.totalRevenue)}
               </p>
               <p
@@ -1137,7 +1143,7 @@ export default function App() {
                     ? 'text-emerald-700'
                     : metrics.totalProfit < 0
                     ? 'text-red-600'
-                    : 'text-emerald-900/70'
+                    : 'text-[#0a2540]/70'
                 }`}
               >
                 {metrics.totalProfit > 0 ? (
@@ -1156,10 +1162,10 @@ export default function App() {
               </p>
             </div>
 
-            {/* 5. Daily Revenue Goal — Indigo/Sky Glass */}
-            <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-indigo-50/90 via-sky-50/75 to-white/70 backdrop-blur-md border border-indigo-200/80 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+            {/* 5. Daily Revenue Goal — Light Blue + Orange Blend Glass */}
+            <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-sky-100/85 via-white/80 to-orange-100/80 backdrop-blur-xl border border-blue-200/90 rounded-2xl p-3.5 sm:p-4 shadow-sm shadow-blue-900/5 hover:shadow-md hover:shadow-blue-900/10 hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold tracking-wide text-indigo-900 truncate">
+                <p className="text-[11px] font-semibold tracking-wide text-[#0a2540] truncate">
                   Daily Revenue Goal
                 </p>
                 <button
@@ -1168,7 +1174,7 @@ export default function App() {
                     setGoalInput(String(dailyGoal));
                     setEditingGoal((prev) => !prev);
                   }}
-                  className="w-6 h-6 rounded-lg bg-indigo-600/15 text-indigo-700 hover:bg-indigo-600/25 flex items-center justify-center shrink-0 transition-colors"
+                  className="w-6 h-6 rounded-lg bg-orange-500/20 text-orange-700 hover:bg-orange-500/30 flex items-center justify-center shrink-0 transition-colors"
                   title="Set daily revenue goal"
                   aria-label="Set daily revenue goal"
                 >
@@ -1193,12 +1199,12 @@ export default function App() {
                     min={1}
                     value={goalInput}
                     onChange={(e) => setGoalInput(e.target.value)}
-                    className="w-full px-2 py-1 text-xs font-mono bg-white border border-indigo-300 rounded-md focus:outline-none focus:border-indigo-600"
+                    className="w-full px-2 py-1 text-xs font-mono bg-white border border-blue-300 rounded-md focus:outline-none focus:border-blue-600"
                     aria-label="Daily goal in KES"
                   />
                   <button
                     type="submit"
-                    className="px-2 py-1 text-[11px] font-semibold text-white bg-indigo-700 rounded-md hover:bg-indigo-800 shrink-0"
+                    className="px-2 py-1 text-[11px] font-semibold text-white bg-[#0a2540] rounded-md hover:bg-[#0e3a6e] shrink-0"
                   >
                     Save
                   </button>
@@ -1206,17 +1212,19 @@ export default function App() {
               ) : (
                 <>
                   <div className="mt-2 flex items-baseline justify-between gap-2">
-                    <p className="text-lg sm:text-xl font-semibold font-mono tabular-nums tracking-tight text-slate-900 truncate">
+                    <p className="text-lg sm:text-xl font-semibold font-mono tabular-nums tracking-tight text-[#0a2540] truncate">
                       {Math.min(100, Math.round((metrics.todayRevenue / dailyGoal) * 100))}%
                     </p>
-                    <span className="text-[11px] font-mono tabular-nums text-indigo-900/75 truncate">
+                    <span className="text-[11px] font-mono tabular-nums text-[#0a2540]/70 truncate">
                       {formatKES(dailyGoal)}
                     </span>
                   </div>
-                  <div className="mt-2 h-1.5 w-full bg-indigo-200/70 rounded-full overflow-hidden">
+                  <div className="mt-2 h-1.5 w-full bg-blue-200/70 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-300 ${
-                        metrics.todayRevenue >= dailyGoal ? 'bg-emerald-600' : 'bg-indigo-600'
+                        metrics.todayRevenue >= dailyGoal
+                          ? 'bg-emerald-600'
+                          : 'bg-gradient-to-r from-[#0e3a6e] via-blue-600 to-orange-500'
                       }`}
                       style={{
                         width: `${Math.min(100, Math.round((metrics.todayRevenue / dailyGoal) * 100))}%`,
@@ -1224,13 +1232,13 @@ export default function App() {
                     />
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-mono tabular-nums text-indigo-900/75 truncate">
+                    <p className="text-[11px] font-mono tabular-nums text-[#0a2540]/70 truncate">
                       Today: {formatKES(metrics.todayRevenue)}
                     </p>
                     <button
                       type="button"
                       onClick={() => setGoalModalOpen(true)}
-                      className="text-[11px] font-semibold text-indigo-700 hover:text-indigo-900 hover:underline whitespace-nowrap shrink-0"
+                      className="text-[11px] font-semibold text-blue-700 hover:text-orange-600 hover:underline whitespace-nowrap shrink-0 transition-colors"
                     >
                       7d trend →
                     </button>
@@ -1296,7 +1304,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <div className="bg-white/85 backdrop-blur-md border border-blue-200/75 rounded-2xl shadow-sm shadow-blue-950/5 overflow-hidden">
                 {loadingData ? (
                   <div className="p-8 space-y-3">
                     {[1, 2, 3, 4].map((n) => (
@@ -1502,18 +1510,40 @@ export default function App() {
           {activeView === 'units' && (
             <section className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={unitSearch}
-                    onChange={(e) => setUnitSearch(e.target.value)}
-                    placeholder="Scan or search Serial / IMEI, product..."
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
-                  />
+                <div className="flex items-center gap-2 flex-1 max-w-md">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-blue-900/45 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={unitSearch}
+                      onChange={(e) => setUnitSearch(e.target.value)}
+                      placeholder="Scan or search Serial / IMEI, product..."
+                      className="w-full pl-9 pr-8 py-2 text-sm bg-white/90 backdrop-blur-md border border-blue-200/85 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
+                    />
+                    {unitSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setUnitSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#0a2540]"
+                        aria-label="Clear search"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setUnitScannerOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-[#0a2540] via-[#0e3a6e] to-[#1d4ed8] hover:from-[#0e3a6e] hover:to-blue-700 rounded-xl shadow-sm shadow-blue-900/20 transition-all whitespace-nowrap shrink-0"
+                    title="Scan barcode with device camera"
+                  >
+                    <ScanBarcode className="w-4 h-4 text-orange-300" />
+                    Scan Barcode
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-1 p-1 bg-slate-200/70 rounded-lg self-start sm:self-auto">
+                <div className="flex items-center gap-1 p-1 bg-blue-100/70 backdrop-blur-sm border border-blue-200/60 rounded-xl self-start sm:self-auto">
                   {(
                     [
                       { id: 'all', label: 'All' },
@@ -1527,10 +1557,10 @@ export default function App() {
                       key={tab.id}
                       type="button"
                       onClick={() => setUnitStatusFilter(tab.id)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
                         unitStatusFilter === tab.id
-                          ? 'bg-white text-slate-900 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-white text-[#0a2540] shadow-xs'
+                          : 'text-[#0a2540]/70 hover:text-[#0a2540]'
                       }`}
                     >
                       {tab.label}
@@ -1539,7 +1569,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <div className="bg-white/85 backdrop-blur-md border border-blue-200/75 rounded-2xl shadow-sm shadow-blue-950/5 overflow-hidden">
                 {filteredUnits.length === 0 ? (
                   <div className="p-10 text-center text-sm text-slate-500">
                     No serialized units found.
@@ -2022,6 +2052,17 @@ export default function App() {
         sales={sales}
         dailyGoal={dailyGoal}
         onClose={() => setGoalModalOpen(false)}
+      />
+
+      <BarcodeScannerModal
+        isOpen={unitScannerOpen}
+        onClose={() => setUnitScannerOpen(false)}
+        onDetected={(code) => {
+          setUnitScannerOpen(false);
+          setUnitStatusFilter('all');
+          setUnitSearch(code);
+          setToast(`Scanned barcode: ${code}`);
+        }}
       />
 
       {!isOnline && (
