@@ -1,7 +1,7 @@
 {
   "name": "VoltStock",
   "description": "Electronics store inventory manager and sales monitor for tracking stock, marking items sold, and managing restocks.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera"],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

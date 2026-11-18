@@ -8,7 +8,6 @@ import {
   Product,
   SaleChannel,
   Unit,
-  VAT_RATE,
 } from '../types';
 
 interface SellUnitModalProps {
@@ -19,8 +18,6 @@ interface SellUnitModalProps {
     product: Product;
     unit: Unit;
     priceAtSale: number;
-    vatAmount: number;
-    totalAmount: number;
     channel: SaleChannel;
     paymentMethod: PaymentMethod;
     customerName: string;
@@ -56,8 +53,6 @@ export function SellUnitModal({
   if (!product) return null;
 
   const selectedUnit = availableUnits.find((u) => u.id === selectedUnitId) || availableUnits[0];
-  const vatAmount = Number((priceAtSale * VAT_RATE).toFixed(2));
-  const totalAmount = Number((priceAtSale + vatAmount).toFixed(2));
   const netProfit = selectedUnit ? Number((priceAtSale - selectedUnit.costSnapshot).toFixed(2)) : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,8 +64,6 @@ export function SellUnitModal({
         product,
         unit: selectedUnit,
         priceAtSale,
-        vatAmount,
-        totalAmount,
         channel,
         paymentMethod,
         customerName: customerName.trim(),
@@ -133,7 +126,7 @@ export function SellUnitModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                Unit Price excl. VAT (KES) *
+                Sale Price (KES) *
               </label>
               <input
                 type="number"
@@ -214,20 +207,12 @@ export function SellUnitModal({
             </div>
           </div>
 
-          {/* 16% VAT Breakdown & Profit/Loss Indicator */}
+          {/* Total & Profit/Loss Indicator */}
           {selectedUnit && (
             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2 text-xs">
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Subtotal (excl. VAT)</span>
+              <div className="flex items-center justify-between font-semibold text-slate-900">
+                <span>Total Sale Amount</span>
                 <span className="font-mono tabular-nums">{formatKES(priceAtSale)}</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-600">
-                <span>VAT (16%)</span>
-                <span className="font-mono tabular-nums">{formatKES(vatAmount)}</span>
-              </div>
-              <div className="flex items-center justify-between font-semibold text-slate-900 pt-1.5 border-t border-slate-200">
-                <span>Total Sale Amount (incl. 16% VAT)</span>
-                <span className="font-mono tabular-nums">{formatKES(totalAmount)}</span>
               </div>
               <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
                 <span className="text-slate-600">Margin Outcome</span>
@@ -272,7 +257,7 @@ export function SellUnitModal({
               className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
             >
               <Check className="w-4 h-4" />
-              {saving ? 'Recording...' : `Confirm (${formatKES(totalAmount)})`}
+              {saving ? 'Recording...' : `Confirm (${formatKES(priceAtSale)})`}
             </button>
           </div>
         </form>

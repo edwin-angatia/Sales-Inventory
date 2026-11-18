@@ -29,6 +29,7 @@ import {
   Receipt,
   RotateCcw,
   Search,
+  Target,
   TrendingDown,
   TrendingUp,
   Truck,
@@ -57,7 +58,9 @@ import {
   UnitStatus,
 } from './types';
 import { AuthGate } from './components/AuthGate';
+import { GoalAttainmentModal } from './components/GoalAttainmentModal';
 import { ItemModal } from './components/ItemModal';
+import { MonthlyRevenueChart } from './components/MonthlyRevenueChart';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { RestockModal } from './components/RestockModal';
 import { SalesRevenueChart } from './components/SalesRevenueChart';
@@ -121,6 +124,15 @@ export default function App() {
   const [seeding, setSeeding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const isOnline = useOnlineStatus();
+
+  const [dailyGoal, setDailyGoal] = useState<number>(() => {
+    const saved = localStorage.getItem('rebootly_daily_revenue_goal');
+    const parsed = saved ? Number(saved) : 150000;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 150000;
+  });
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState(String(dailyGoal));
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
 
   // Auth listener & user profile registration
   useEffect(() => {
@@ -322,6 +334,13 @@ export default function App() {
     const totalProfit = completedSales.reduce((sum, s) => sum + s.totalProfit, 0);
     const totalSoldUnits = completedSales.reduce((sum, s) => sum + s.itemCount, 0);
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayRevenue = completedSales.reduce((sum, s) => {
+      const d = s.soldAt?.toDate ? s.soldAt.toDate() : null;
+      return d && d >= todayStart ? sum + s.totalAmount : sum;
+    }, 0);
+
     return {
       totalInStockUnits,
       inventoryValue,
@@ -330,6 +349,7 @@ export default function App() {
       totalRevenue,
       totalProfit,
       totalSoldUnits,
+      todayRevenue,
     };
   }, [activeProducts, unitsByProduct, sales]);
 
@@ -415,9 +435,7 @@ export default function App() {
       'Customer',
       'Customer Phone',
       'Sold By',
-      'Subtotal excl. VAT (KES)',
-      'VAT 16% (KES)',
-      'Total incl. VAT (KES)',
+      'Total (KES)',
       'Cost Snapshot (KES)',
       'Net Profit/Loss (KES)',
       'Outcome',
@@ -427,8 +445,6 @@ export default function App() {
     for (const sale of filteredSales) {
       const dateStr = sale.soldAt?.toDate ? sale.soldAt.toDate().toISOString() : '';
       const lineItems = saleItemsBySale.get(sale.id) || [];
-      const subtotalVal = sale.subtotal ?? sale.totalAmount;
-      const vatVal = sale.vatAmount ?? 0;
       const outcome =
         sale.totalProfit > 0 ? 'Profit' : sale.totalProfit < 0 ? 'Loss' : 'Break-even';
 
@@ -449,8 +465,6 @@ export default function App() {
             sale.customerPhone || '',
             sale.soldBy,
             String(li.priceAtSale),
-            String(vatVal),
-            String(sale.totalAmount),
             String(li.costAtSale),
             String(itemProfit),
             itemOutcome,
@@ -469,10 +483,8 @@ export default function App() {
           sale.customerName || '',
           sale.customerPhone || '',
           sale.soldBy,
-          String(subtotalVal),
-          String(vatVal),
           String(sale.totalAmount),
-          String(subtotalVal - sale.totalProfit),
+          String(sale.totalAmount - sale.totalProfit),
           String(sale.totalProfit),
           outcome,
         ]);
@@ -622,8 +634,6 @@ export default function App() {
     product,
     unit,
     priceAtSale,
-    vatAmount,
-    totalAmount,
     channel,
     paymentMethod,
     customerName,
@@ -632,8 +642,6 @@ export default function App() {
     product: Product;
     unit: Unit;
     priceAtSale: number;
-    vatAmount: number;
-    totalAmount: number;
     channel: SaleChannel;
     paymentMethod: PaymentMethod;
     customerName: string;
@@ -655,9 +663,7 @@ export default function App() {
         paymentMethod,
         customerName: customerName.slice(0, 100),
         customerPhone: customerPhone.slice(0, 40),
-        subtotal: Number(priceAtSale),
-        vatAmount: Number(vatAmount),
-        totalAmount: Number(totalAmount),
+        totalAmount: Number(priceAtSale),
         totalProfit: profit,
         itemCount: 1,
         status: 'completed',
@@ -686,9 +692,7 @@ export default function App() {
       });
 
       await batch.commit();
-      setToast(
-        `Sold ${product.name} (${unit.serialNumber}) for ${formatKES(totalAmount)} incl. 16% VAT.`
-      );
+      setToast(`Sold ${product.name} (${unit.serialNumber}) for ${formatKES(priceAtSale)}.`);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'sales');
     }
@@ -1001,7 +1005,7 @@ export default function App() {
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2 text-sm min-w-0">
-              <span className="text-slate-400 hidden sm:inline">Rebootly</span>
+              <span className="hidden sm:inline font-[Georgia] font-bold text-[#04295f]">Rebootly</span>
               <span className="text-slate-300 hidden sm:inline">/</span>
               <h1 className="font-semibold text-slate-900 truncate">{viewTitle}</h1>
             </div>
@@ -1021,53 +1025,66 @@ export default function App() {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto space-y-6">
-          {/* 4-Column Compact Frosted Glasscard Grid */}
+          {/* 5-Column Colourful Compact Frosted Glasscard Grid */}
           <section
             aria-label="Store summary"
-            className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+            className="grid grid-cols-2 lg:grid-cols-5 gap-3"
           >
-            <div className="bg-white/75 backdrop-blur-md border border-teal-900/10 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-sm transition-all">
+            {/* 1. In-Stock Units — Teal/Cyan Glass */}
+            <div className="bg-gradient-to-br from-teal-50/90 via-cyan-50/75 to-white/70 backdrop-blur-md border border-teal-200/80 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-medium tracking-wide text-slate-500 truncate">
+                <p className="text-[11px] font-semibold tracking-wide text-teal-800 truncate">
                   In-Stock Units (Derived)
                 </p>
-                <span className="w-6 h-6 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+                <span className="w-6 h-6 rounded-lg bg-teal-600/15 text-teal-700 flex items-center justify-center shrink-0">
                   <Boxes className="w-3.5 h-3.5" />
                 </span>
               </div>
               <p className="mt-2 text-xl sm:text-2xl font-semibold font-mono tabular-nums tracking-tight text-slate-900">
                 {metrics.totalInStockUnits}
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-500 truncate">
+              <p className="mt-0.5 text-[11px] text-teal-800/75 truncate">
                 Across {activeProducts.length} active SKU{activeProducts.length === 1 ? '' : 's'}
               </p>
             </div>
 
-            <div className="bg-white/75 backdrop-blur-md border border-teal-900/10 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-sm transition-all">
+            {/* 2. Inventory Retail Value — Amber/Gold Glass */}
+            <div className="bg-gradient-to-br from-amber-50/90 via-orange-50/75 to-white/70 backdrop-blur-md border border-amber-200/80 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-medium tracking-wide text-slate-500 truncate">
+                <p className="text-[11px] font-semibold tracking-wide text-amber-900 truncate">
                   Inventory Retail Value
                 </p>
-                <span className="w-6 h-6 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                <span className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
                   <Receipt className="w-3.5 h-3.5" />
                 </span>
               </div>
               <p className="mt-2 text-lg sm:text-2xl font-semibold font-mono tabular-nums tracking-tight text-slate-900 truncate">
                 {formatKES(metrics.inventoryValue)}
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-500 truncate">Active in-stock units</p>
+              <p className="mt-0.5 text-[11px] text-amber-900/75 truncate">Active in-stock units</p>
             </div>
 
-            <div className="bg-white/75 backdrop-blur-md border border-teal-900/10 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-sm transition-all">
+            {/* 3. Needs Restock — Rose/Coral or Mint Glass */}
+            <div
+              className={`backdrop-blur-md rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all border ${
+                metrics.restockCount > 0
+                  ? 'bg-gradient-to-br from-rose-50/90 via-orange-50/75 to-white/70 border-rose-200/80'
+                  : 'bg-gradient-to-br from-emerald-50/90 via-teal-50/75 to-white/70 border-emerald-200/80'
+              }`}
+            >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-medium tracking-wide text-slate-500 truncate">
+                <p
+                  className={`text-[11px] font-semibold tracking-wide truncate ${
+                    metrics.restockCount > 0 ? 'text-rose-900' : 'text-emerald-900'
+                  }`}
+                >
                   Needs Restock
                 </p>
                 <span
                   className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
                     metrics.restockCount > 0
-                      ? 'bg-orange-50 text-orange-600'
-                      : 'bg-emerald-50 text-emerald-700'
+                      ? 'bg-rose-500/15 text-rose-700'
+                      : 'bg-emerald-500/15 text-emerald-700'
                   }`}
                 >
                   <AlertCircle className="w-3.5 h-3.5" />
@@ -1075,28 +1092,33 @@ export default function App() {
               </div>
               <p
                 className={`mt-2 text-xl sm:text-2xl font-semibold font-mono tabular-nums tracking-tight ${
-                  metrics.restockCount > 0 ? 'text-orange-600' : 'text-slate-900'
+                  metrics.restockCount > 0 ? 'text-rose-700' : 'text-slate-900'
                 }`}
               >
                 {metrics.restockCount}
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-500 truncate">
+              <p
+                className={`mt-0.5 text-[11px] truncate ${
+                  metrics.restockCount > 0 ? 'text-rose-900/75' : 'text-emerald-900/75'
+                }`}
+              >
                 {metrics.outOfStockCount > 0
                   ? `${metrics.outOfStockCount} out of stock`
                   : 'All SKUs above zero'}
               </p>
             </div>
 
-            <div className="bg-white/75 backdrop-blur-md border border-teal-900/10 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-sm transition-all">
+            {/* 4. Sales Revenue — Emerald/Green Glass */}
+            <div className="bg-gradient-to-br from-emerald-50/90 via-green-50/75 to-white/70 backdrop-blur-md border border-emerald-200/80 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-medium tracking-wide text-slate-500 truncate">
-                  Sales Revenue (incl. 16% VAT)
+                <p className="text-[11px] font-semibold tracking-wide text-emerald-900 truncate">
+                  Sales Revenue
                 </p>
                 <span
                   className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
                     metrics.totalProfit < 0
-                      ? 'bg-red-50 text-red-600'
-                      : 'bg-emerald-50 text-emerald-700'
+                      ? 'bg-red-500/15 text-red-700'
+                      : 'bg-emerald-600/15 text-emerald-700'
                   }`}
                 >
                   {metrics.totalProfit < 0 ? (
@@ -1115,7 +1137,7 @@ export default function App() {
                     ? 'text-emerald-700'
                     : metrics.totalProfit < 0
                     ? 'text-red-600'
-                    : 'text-slate-500'
+                    : 'text-emerald-900/70'
                 }`}
               >
                 {metrics.totalProfit > 0 ? (
@@ -1132,6 +1154,89 @@ export default function App() {
                   `${metrics.totalSoldUnits} sold · Break-even`
                 )}
               </p>
+            </div>
+
+            {/* 5. Daily Revenue Goal — Indigo/Sky Glass */}
+            <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-indigo-50/90 via-sky-50/75 to-white/70 backdrop-blur-md border border-indigo-200/80 rounded-xl p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold tracking-wide text-indigo-900 truncate">
+                  Daily Revenue Goal
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGoalInput(String(dailyGoal));
+                    setEditingGoal((prev) => !prev);
+                  }}
+                  className="w-6 h-6 rounded-lg bg-indigo-600/15 text-indigo-700 hover:bg-indigo-600/25 flex items-center justify-center shrink-0 transition-colors"
+                  title="Set daily revenue goal"
+                  aria-label="Set daily revenue goal"
+                >
+                  <Target className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {editingGoal ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const next = Math.max(1, Number(goalInput) || dailyGoal);
+                    setDailyGoal(next);
+                    localStorage.setItem('rebootly_daily_revenue_goal', String(next));
+                    setEditingGoal(false);
+                    setToast(`Daily revenue goal updated to ${formatKES(next)}.`);
+                  }}
+                  className="mt-2 flex items-center gap-1.5"
+                >
+                  <input
+                    type="number"
+                    min={1}
+                    value={goalInput}
+                    onChange={(e) => setGoalInput(e.target.value)}
+                    className="w-full px-2 py-1 text-xs font-mono bg-white border border-indigo-300 rounded-md focus:outline-none focus:border-indigo-600"
+                    aria-label="Daily goal in KES"
+                  />
+                  <button
+                    type="submit"
+                    className="px-2 py-1 text-[11px] font-semibold text-white bg-indigo-700 rounded-md hover:bg-indigo-800 shrink-0"
+                  >
+                    Save
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <div className="mt-2 flex items-baseline justify-between gap-2">
+                    <p className="text-lg sm:text-xl font-semibold font-mono tabular-nums tracking-tight text-slate-900 truncate">
+                      {Math.min(100, Math.round((metrics.todayRevenue / dailyGoal) * 100))}%
+                    </p>
+                    <span className="text-[11px] font-mono tabular-nums text-indigo-900/75 truncate">
+                      {formatKES(dailyGoal)}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 w-full bg-indigo-200/70 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        metrics.todayRevenue >= dailyGoal ? 'bg-emerald-600' : 'bg-indigo-600'
+                      }`}
+                      style={{
+                        width: `${Math.min(100, Math.round((metrics.todayRevenue / dailyGoal) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-mono tabular-nums text-indigo-900/75 truncate">
+                      Today: {formatKES(metrics.todayRevenue)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setGoalModalOpen(true)}
+                      className="text-[11px] font-semibold text-indigo-700 hover:text-indigo-900 hover:underline whitespace-nowrap shrink-0"
+                    >
+                      7d trend →
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </section>
 
@@ -1597,10 +1702,13 @@ export default function App() {
             </section>
           )}
 
-          {/* 4. SALES LOG VIEW (RECHARTS 30-DAY BAR CHART, 16% VAT, PROFIT/LOSS & CSV EXPORT) */}
+          {/* 4. SALES LOG VIEW (30-DAY BAR + 12-MONTH LINE CHARTS, PROFIT/LOSS & CSV EXPORT) */}
           {activeView === 'sales' && (
             <section className="space-y-4">
-              <SalesRevenueChart sales={sales} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <SalesRevenueChart sales={sales} />
+                <MonthlyRevenueChart sales={sales} />
+              </div>
 
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
@@ -1677,7 +1785,7 @@ export default function App() {
                           <th className="py-3 px-4">Item &amp; Serial/IMEI</th>
                           <th className="py-3 px-4">Channel · Payment</th>
                           <th className="py-3 px-4">Customer</th>
-                          <th className="py-3 px-4 text-right">Total incl. 16% VAT</th>
+                          <th className="py-3 px-4 text-right">Total (KES)</th>
                           <th className="py-3 px-4 text-right">Profit / Loss</th>
                           <th className="py-3 px-4 text-right">Status / Action</th>
                         </tr>
@@ -1723,15 +1831,8 @@ export default function App() {
                                   </div>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
-                                <div className="font-medium text-slate-900">
-                                  {formatKES(sale.totalAmount)}
-                                </div>
-                                {typeof sale.vatAmount === 'number' && sale.vatAmount > 0 && (
-                                  <div className="text-[11px] text-slate-400">
-                                    VAT {formatKES(sale.vatAmount)}
-                                  </div>
-                                )}
+                              <td className="py-3 px-4 text-right font-mono tabular-nums font-medium text-slate-900 whitespace-nowrap">
+                                {formatKES(sale.totalAmount)}
                               </td>
                               <td className="py-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                                 {sale.totalProfit > 0 ? (
@@ -1914,6 +2015,13 @@ export default function App() {
         availableUnits={sellProduct ? unitsByProduct.get(sellProduct.id)?.inStock ?? [] : []}
         onClose={() => setSellProduct(null)}
         onConfirmSale={handleConfirmSale}
+      />
+
+      <GoalAttainmentModal
+        isOpen={goalModalOpen}
+        sales={sales}
+        dailyGoal={dailyGoal}
+        onClose={() => setGoalModalOpen(false)}
       />
 
       {!isOnline && (

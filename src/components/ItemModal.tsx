@@ -7,6 +7,7 @@ import {
   ProductFormInput,
   Supplier,
 } from '../types';
+import { CameraExtractButton, ExtractedProductData } from './CameraExtractButton';
 
 interface ItemModalProps {
   isOpen: boolean;
@@ -105,6 +106,30 @@ export function ItemModal({
     }
   };
 
+  const handleExtracted = (extracted: ExtractedProductData) => {
+    setForm((prev) => ({
+      ...prev,
+      name: extracted.name || prev.name,
+      brand: extracted.brand || prev.brand,
+      model: extracted.model || prev.model,
+      sku:
+        extracted.sku ||
+        prev.sku ||
+        (extracted.brand && extracted.model
+          ? `${extracted.brand.slice(0, 3).toUpperCase()}-${extracted.model.replace(/[^A-Za-z0-9]/g, '').slice(0, 10).toUpperCase()}`
+          : prev.sku),
+      barcode: extracted.barcode || prev.barcode,
+      category: extracted.category || prev.category,
+      notes: extracted.notes || prev.notes,
+      initialSerials:
+        extracted.serialNumbers && extracted.serialNumbers.length > 0
+          ? prev.initialSerials.trim()
+            ? `${prev.initialSerials.trim()}\n${extracted.serialNumbers.join('\n')}`
+            : extracted.serialNumbers.join('\n')
+          : prev.initialSerials,
+    }));
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4"
@@ -128,6 +153,8 @@ export function ItemModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <CameraExtractButton onExtracted={handleExtracted} />
+
           {error && (
             <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
               {error}

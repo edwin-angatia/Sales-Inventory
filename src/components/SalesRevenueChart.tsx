@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -55,20 +56,29 @@ export function SalesRevenueChart({ sales }: SalesRevenueChartProps) {
     return Array.from(map.values());
   }, [sales]);
 
-  const total30dRevenue = useMemo(
-    () => data.reduce((sum, d) => sum + d.revenue, 0),
-    [data]
-  );
+  const { total30dRevenue, peakDay } = useMemo(() => {
+    let total = 0;
+    let peak: DailyRevenuePoint | null = null;
+    for (const d of data) {
+      total += d.revenue;
+      if (d.revenue > 0 && (!peak || d.revenue > peak.revenue)) {
+        peak = d;
+      }
+    }
+    return { total30dRevenue: total, peakDay: peak };
+  }, [data]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+    <div className="bg-white/80 backdrop-blur-md border border-teal-900/10 rounded-xl p-5 space-y-4 shadow-xs">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">
-            Daily Revenue — Last 30 Days (incl. 16% VAT)
+            Daily Revenue Trends — Last 30 Days
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Completed sales revenue aggregated by day
+            {peakDay
+              ? `Peak business day: ${peakDay.label} (${formatKES(peakDay.revenue)} · ${peakDay.count} unit${peakDay.count === 1 ? '' : 's'})`
+              : 'Record completed sales to highlight peak business days'}
           </p>
         </div>
         <div className="text-right">
@@ -108,15 +118,17 @@ export function SalesRevenueChart({ sales }: SalesRevenueChartProps) {
                 color: '#F8FAFC',
                 fontSize: '12px',
               }}
-              formatter={(value) => [formatKES(Number(value ?? 0)), 'Revenue (incl. VAT)']}
+              formatter={(value) => [formatKES(Number(value ?? 0)), 'Revenue']}
               labelStyle={{ color: '#94A3B8', marginBottom: '4px' }}
             />
-            <Bar
-              dataKey="revenue"
-              fill="#EA580C"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={24}
-            />
+            <Bar dataKey="revenue" radius={[4, 4, 0, 0]} maxBarSize={24}>
+              {data.map((entry) => (
+                <Cell
+                  key={entry.dateKey}
+                  fill={peakDay && entry.dateKey === peakDay.dateKey ? '#0F766E' : '#EA580C'}
+                />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
