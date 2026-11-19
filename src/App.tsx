@@ -28,7 +28,6 @@ import {
   Plus,
   Receipt,
   RotateCcw,
-  ScanBarcode,
   Search,
   Target,
   TrendingDown,
@@ -59,7 +58,6 @@ import {
   UnitStatus,
 } from './types';
 import { AuthGate } from './components/AuthGate';
-import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { GoalAttainmentModal } from './components/GoalAttainmentModal';
 import { ItemModal } from './components/ItemModal';
 import { MonthlyRevenueChart } from './components/MonthlyRevenueChart';
@@ -69,6 +67,7 @@ import { SalesRevenueChart } from './components/SalesRevenueChart';
 import { SellUnitModal } from './components/SellUnitModal';
 import { SupplierPerformance } from './components/SupplierPerformance';
 import { useOnlineStatus } from './hooks/usePWAInstall';
+import { playDropcoinTone } from './utils/sound';
 
 type NavView = 'inventory' | 'units' | 'restock' | 'sales' | 'suppliers';
 
@@ -115,7 +114,6 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [sellProduct, setSellProduct] = useState<Product | null>(null);
-  const [unitScannerOpen, setUnitScannerOpen] = useState(false);
 
   // Supplier quick-add form
   const [newSupplierName, setNewSupplierName] = useState('');
@@ -696,6 +694,7 @@ export default function App() {
       });
 
       await batch.commit();
+      playDropcoinTone();
       setToast(`Sold ${product.name} (${unit.serialNumber}) for ${formatKES(priceAtSale)}.`);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'sales');
@@ -922,12 +921,16 @@ export default function App() {
         }`}
       >
         <div className="h-16 px-5 flex items-center justify-between border-b border-blue-100/90">
-          <img
-            src={REBOOTLY_LOGO_URL}
-            alt="Rebootly"
-            referrerPolicy="no-referrer"
-            className="h-9 w-auto object-contain"
-          />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img
+              src={REBOOTLY_LOGO_URL}
+              alt="Sales Inventory"
+              className="h-9 w-9 rounded-lg object-cover shadow-xs border border-blue-100 shrink-0"
+            />
+            <span className="font-[Georgia] font-bold text-[#04295f] text-base tracking-tight truncate">
+              Sales Inventory
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => setMobileNavOpen(false)}
@@ -1010,7 +1013,7 @@ export default function App() {
             </button>
             <div className="flex items-center gap-2 text-sm min-w-0">
               <span className="hidden sm:inline font-[Georgia] font-bold text-[#04295f] tracking-wide">
-                Rebootly
+                Sales Inventory
               </span>
               <span className="text-orange-400 hidden sm:inline">/</span>
               <h1 className="font-serif font-bold text-[#0a2540] truncate">{viewTitle}</h1>
@@ -1510,37 +1513,25 @@ export default function App() {
           {activeView === 'units' && (
             <section className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-1 max-w-md">
-                  <div className="relative flex-1">
-                    <Search className="w-4 h-4 text-blue-900/45 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={unitSearch}
-                      onChange={(e) => setUnitSearch(e.target.value)}
-                      placeholder="Scan or search Serial / IMEI, product..."
-                      className="w-full pl-9 pr-8 py-2 text-sm bg-white/90 backdrop-blur-md border border-blue-200/85 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
-                    />
-                    {unitSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setUnitSearch('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#0a2540]"
-                        aria-label="Clear search"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setUnitScannerOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-[#0a2540] via-[#0e3a6e] to-[#1d4ed8] hover:from-[#0e3a6e] hover:to-blue-700 rounded-xl shadow-sm shadow-blue-900/20 transition-all whitespace-nowrap shrink-0"
-                    title="Scan barcode with device camera"
-                  >
-                    <ScanBarcode className="w-4 h-4 text-orange-300" />
-                    Scan Barcode
-                  </button>
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="w-4 h-4 text-blue-900/45 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={unitSearch}
+                    onChange={(e) => setUnitSearch(e.target.value)}
+                    placeholder="Search Serial / IMEI, product..."
+                    className="w-full pl-9 pr-8 py-2 text-sm bg-white/90 backdrop-blur-md border border-blue-200/85 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
+                  />
+                  {unitSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setUnitSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#0a2540]"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1 p-1 bg-blue-100/70 backdrop-blur-sm border border-blue-200/60 rounded-xl self-start sm:self-auto">
@@ -2019,6 +2010,18 @@ export default function App() {
             </section>
           )}
         </main>
+
+        <footer className="py-4 px-6 border-t border-blue-200/60 bg-white/55 backdrop-blur-md text-center text-xs text-[#0a2540]/75">
+          Made with ❤️ by{' '}
+          <a
+            href="https://edwin-angatia.github.io/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[#04295f] hover:text-orange-600 underline underline-offset-2 transition-colors"
+          >
+            Rebootly
+          </a>
+        </footer>
       </div>
 
       {/* Modals */}
@@ -2052,17 +2055,6 @@ export default function App() {
         sales={sales}
         dailyGoal={dailyGoal}
         onClose={() => setGoalModalOpen(false)}
-      />
-
-      <BarcodeScannerModal
-        isOpen={unitScannerOpen}
-        onClose={() => setUnitScannerOpen(false)}
-        onDetected={(code) => {
-          setUnitScannerOpen(false);
-          setUnitStatusFilter('all');
-          setUnitSearch(code);
-          setToast(`Scanned barcode: ${code}`);
-        }}
       />
 
       {!isOnline && (

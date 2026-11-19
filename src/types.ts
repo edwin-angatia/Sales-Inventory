@@ -1,7 +1,8 @@
 import { Timestamp } from 'firebase/firestore';
+import salesInventoryLogo from './assets/images/sales_inventory_logo_1795083547737.jpg';
 
-export const REBOOTLY_LOGO_URL =
-  '/assets/aistudio/WhatsApp_Image_2026-11-18_at_16.04.40_93e5f1dc.jpeg';
+export const APP_LOGO_URL = salesInventoryLogo;
+export const REBOOTLY_LOGO_URL = salesInventoryLogo;
 
 export const ELECTRONICS_CATEGORIES = [
   'Smartphones',
