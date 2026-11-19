@@ -14,23 +14,23 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         manifest: {
           id: '/',
-          name: 'Rebootly Inventory & Sales',
-          short_name: 'Rebootly',
-          description: 'Electronics store inventory manager for serialized units, KES sales with 16% VAT, and restock tracking.',
-          theme_color: '#0F172A',
-          background_color: '#F8FAFC',
+          name: 'Sales Inventory',
+          short_name: 'Sales Inventory',
+          description: 'Electronics store inventory manager for serialized units, KES sales tracking, and restock monitoring.',
+          theme_color: '#0a2540',
+          background_color: '#eef5ff',
           display: 'standalone',
           start_url: '/',
           scope: '/',
           icons: [
             {
-              src: '/assets/aistudio/WhatsApp_Image_2026-11-18_at_16.04.40_93e5f1dc.jpeg',
+              src: '/src/assets/images/sales_inventory_logo_1795083547737.jpg',
               sizes: '192x192',
               type: 'image/jpeg',
               purpose: 'any',
             },
             {
-              src: '/assets/aistudio/WhatsApp_Image_2026-11-18_at_16.04.40_93e5f1dc.jpeg',
+              src: '/src/assets/images/sales_inventory_logo_1795083547737.jpg',
               sizes: '512x512',
               type: 'image/jpeg',
               purpose: 'any',
@@ -39,6 +39,9 @@ export default defineConfig(() => {
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          skipWaiting: true,
+          clientsClaim: true,
+          cleanupOutdatedCaches: true,
         },
         devOptions: {
           enabled: true,
